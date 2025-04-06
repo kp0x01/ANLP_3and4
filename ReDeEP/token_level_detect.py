@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pdb
 import pickle
 import argparse
+from transformers import AutoConfig
 
 parser = argparse.ArgumentParser(description='Script for processing data and models.')
 parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
@@ -25,6 +26,14 @@ if args.dataset == "ragtruth":
         response_path = "../dataset/response.jsonl"
 elif args.dataset == "dolly":
     response_path = "../dataset/response_dolly.jsonl"
+
+config_file_path = "config.json"
+with open(config_file_path, "r") as f:
+    config_data = json.load(f)
+hf_token = config_data.get("hf_token")
+if not hf_token:
+    raise ValueError("Hugging Face token not found in config.json")
+
 
 response = []
 with open(response_path, 'r') as f:
@@ -45,36 +54,41 @@ with open(source_info_path, 'r') as f:
         data = json.loads(line)
         source_info_dict[data['source_id']] = data
 
-
-
 if args.model_name == "llama2-7b":
-    model_name = "llama2/llama-2-7b-chat-hf"
+    model_name = "meta-llama/Llama-2-7b-chat-hf"
 elif args.model_name == "llama2-13b":
-    model_name = "llama2/llama-2-13b-chat-hf"
+    model_name = "meta-llama/llama-2-13b-chat-hf"
 elif args.model_name == "llama3-8b":
-    model_name = "llama3/Meta-Llama-3-8B-Instruct/"
+    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+
+
+config = AutoConfig.from_pretrained(model_name) #added
+config._attn_implementation = "eager" #added
 
 
 model = AutoModelForCausalLM.from_pretrained(
-    f"/home/sunhao_dai/PLMs/{model_name}",
+    model_name,
     device_map="auto",
-    torch_dtype=torch.float16
+    config=config,
+    torch_dtype=torch.float16,
+    token = hf_token
 )
-tokenizer = AutoTokenizer.from_pretrained(f"/home/sunhao_dai/PLMs/{model_name}")
+tokenizer = AutoTokenizer.from_pretrained(model_name, token = hf_token)
 device = "cuda"
 
+
 if args.model_name == "llama2-13b":
-    tokenizer_for_temp = AutoTokenizer.from_pretrained("/home/sunhao_dai/PLMs/llama2/llama-2-7b-chat-hf")
+    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = hf_token)
 else:
     tokenizer_for_temp = tokenizer
 
 
 if args.model_name == "llama2-7b":
-    topk_head_path = "./log/test_llama2_7B/topk_heads.json"
+    topk_head_path = "./ReDeEP/log/test_llama2_7B/topk_heads.json"
 elif args.model_name == "llama2-13b":
-    topk_head_path = "./log/test_llama2_13B/topk_heads.json"
+    topk_head_path = "./ReDeEP/log/test_llama2_13B/topk_heads.json"
 elif args.model_name == "llama3-8b":
-    topk_head_path = "./log/test_llama3_8B/topk_heads.json"
+    topk_head_path = "./ReDeEP/log/test_llama3_8B/topk_heads.json"
 else:
     print("model name error")
     exit(-1)
@@ -148,7 +162,8 @@ else:
     print("model name error")
     exit(-1) 
 
-for i in tqdm(range(len(response))):
+for i in tqdm(range(40)):
+#for i in tqdm(range(len(response))):
     if response[i]['model'] == data_type and response[i]["split"] == "test":
         response_rag = response[i]['response']
         source_id = response[i]['source_id']
@@ -168,8 +183,8 @@ for i in tqdm(range(len(response))):
         print("all_text_len:", len(input_text))
         print("prompt_len", len(prompt))
         print("respond_len", len(response_rag))
-        input_ids = tokenizer([input_text], return_tensors="pt").input_ids
-        prefix_ids = tokenizer([text], return_tensors="pt").input_ids
+        input_ids = tokenizer([input_text], return_tensors="pt").input_ids.to("cuda")
+        prefix_ids = tokenizer([text], return_tensors="pt").input_ids.to("cuda")
         continue_ids = input_ids[0, prefix_ids.shape[-1]:] # todo 这边要改成幻觉 token 的起止位置
         if "labels" in response[i].keys():
             hallucination_spans = calculate_hallucination_spans(response[i]['labels'], text, response_rag, tokenizer, prefix_ids.shape[-1])
@@ -286,19 +301,19 @@ for i in tqdm(range(len(response))):
 
 if args.model_name == "llama2-7b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_v1.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_v1.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_v1_dolly.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_v1_dolly.json"
 elif args.model_name == "llama2-13b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama2_13B/llama2_13B_response_v1.json"
+        save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_v1.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama2_13B/llama2_13B_response_v1_dolly.json"
+        save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_v1_dolly.json"
 elif args.model_name == "llama3-8b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama3_8B/llama3_8B_response_v1.json"
+        save_path = "./ReDeEP/log/test_llama3_8B/llama3_8B_response_v1.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama3_8B/llama3_8B_response_v1_dolly.json"
+        save_path = "./ReDeEP/log/test_llama3_8B/llama3_8B_response_v1_dolly.json"
 else:
     print("model name error")
     exit(-1)

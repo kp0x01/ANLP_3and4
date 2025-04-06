@@ -85,7 +85,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name, token = hf_token)
 device = "cuda"
 
 if args.model_name == "llama2-13b":
-    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token =hf_token)
+    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = hf_token)
 else:
     tokenizer_for_temp = tokenizer
 
@@ -249,7 +249,8 @@ else:
     exit(-1) 
 
 
-for i in tqdm(range(len(response))):
+#for i in tqdm(range(len(response))):
+for i in tqdm(range(100,140)):
     if response[i]['model'] == data_type and response[i]["split"] == "test":
         response_rag = response[i]['response']
         source_id = response[i]['source_id']
@@ -259,6 +260,7 @@ for i in tqdm(range(len(response))):
         original_response_spans = response[i]['response_spans']
 
         text = add_special_template(prompt[:12000])
+        #text = add_special_template(prompt[:1000])
         input_text = text+response_rag
         print("all_text_len:", len(input_text))
         print("prompt_len", len(prompt))
@@ -345,19 +347,20 @@ for i in tqdm(range(len(response))):
 
 if args.model_name == "llama2-7b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk.json"
+        #save_path = "./log/test_llama2_7B/llama2_7B_response_chunk_1.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
 elif args.model_name == "llama2-13b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama2_13B/llama2_13B_response_chunk.json"
+        save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_chunk.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama2_13B/llama2_13B_response_chunk_dolly.json"
+        save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_chunk_dolly.json"
 elif args.model_name == "llama3-8b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama3_8B/llama3_8B_response_chunk.json"
+        save_path = "./ReDeEP/log/test_llama3_8B/llama3_8B_response_chunk.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama3_8B/llama3_8B_response_chunk_dolly.json"
+        save_path = "./ReDeEP/log/test_llama3_8B/llama3_8B_response_chunk_dolly.json"
 else:
     print("model name error")
     exit(-1)
