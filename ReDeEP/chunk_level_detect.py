@@ -25,6 +25,13 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+config_file_path = "config.json"
+with open(config_file_path, "r") as f:
+    config_data = json.load(f)
+hf_token = config_data.get("hf_token")
+if not hf_token:
+    raise ValueError("Hugging Face token not found in config.json")
+
 
 bge_model = SentenceTransformer("BAAI/bge-base-en-v1.5").to("cuda:0")
 if args.dataset == "ragtruth":
@@ -72,13 +79,13 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
     config=config,
     torch_dtype=torch.float16,
-    token = "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"
+    token = hf_token
 )
-tokenizer = AutoTokenizer.from_pretrained(model_name, token = "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")
+tokenizer = AutoTokenizer.from_pretrained(model_name, token = hf_token)
 device = "cuda"
 
 if args.model_name == "llama2-13b":
-    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = "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")
+    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token =hf_token)
 else:
     tokenizer_for_temp = tokenizer
 
