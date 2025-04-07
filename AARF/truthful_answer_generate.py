@@ -6,6 +6,10 @@ import json
 from tqdm import tqdm
 import argparse
 import pdb
+from transformers import AutoConfig
+from itertools import islice
+
+
 
 
 parser = argparse.ArgumentParser(description='Script for processing data and models.')
@@ -35,6 +39,7 @@ Respond in the following format:
 
 
 source_info_path = "../dataset/source_info_dolly.jsonl"
+
 source_info_dict = {}
 
 with open(source_info_path, 'r') as f:
@@ -63,11 +68,11 @@ for item in source_id_set:
 
 
 if args.model_name == "llama2-7b":
-    save_path = "../analysis_hallucination_module/log/test_llama2_13B/token_hyperparameter_dolly.json"
+    save_path = "./ReDeEP/log/test_llama2_7B/token_hyperparameter_dolly.json"
 elif args.model_name == "llama2-13b":
-    save_path = "../analysis_hallucination_module/log/test_llama2_13B/token_hyperparameter_dolly.json"
+    save_path = "./ReDeEP/log/test_llama2_13B/token_hyperparameter_dolly.json"
 elif args.model_name == "llama3-8b":
-    save_path = "../analysis_hallucination_module/log/test_llama3_8B/token_hyperparameter_dolly.json"
+    save_path = "./ReDeEP/log/test_llama3_8B/token_hyperparameter_dolly.json"
 
 with open(save_path, "r") as f:
     hypter_parameter = json.load(f)
@@ -91,24 +96,27 @@ else:
 
 
 if args.model_name == "llama2-7b":
-    model_name = "llama2/llama-2-7b-chat-hf"
+    model_name = "meta-llama/llama-2-7b-chat-hf"
 elif args.model_name == "llama2-13b":
-    model_name = "llama2/llama-2-13b-chat-hf"
+    model_name = "meta-llama/llama-2-13b-chat-hf"
 elif args.model_name == "llama3-8b":
-    model_name = "llama3/Meta-Llama-3-8B-Instruct/"
+    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
 else:
     print("name error")
     exit(-1)
 
-tokenizer = AutoTokenizer.from_pretrained(f"/home/sunhao_dai/PLMs/{model_name}")
+tokenizer = AutoTokenizer.from_pretrained(model_name, token = "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")
 if args.model_name == "llama2-13b":
-    tokenizer_for_temp = AutoTokenizer.from_pretrained("/home/sunhao_dai/PLMs/llama2/llama-2-7b-chat-hf")
+    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = "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")
 else:
     tokenizer_for_temp = tokenizer
 
+config = AutoConfig.from_pretrained(model_name) #added
+config._attn_implementation = "eager" #added
+
 if args.AARF:
     model = AutoModelForCausalLM.from_pretrained(
-        f"/home/sunhao_dai/PLMs/{model_name}",
+        model_name,
         torch_dtype=torch.float16,
         device_map="auto",
         select_layers=select_layers,
@@ -116,14 +124,16 @@ if args.AARF:
         layers_max_min=layers_max_min,
         head_max_min=head_max_min,
         weight=weight,
-        final_max_min=final_max_min
+        final_max_min=final_max_min,
+        config=config,
+        token = "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"
     )
     model.add_attention_weight = 1.2
     model.reduce_ffn_weight = 0.8
     model.threshold = 0.6
 else:
     model = AutoModelForCausalLM.from_pretrained(
-    f"/home/sunhao_dai/PLMs/{model_name}",
+    model_name,
     torch_dtype=torch.float16,
     device_map="auto"
     )
@@ -142,11 +152,15 @@ def add_special_template(prompt):
     return text
 
 final_datas = []
-for key, prompt in tqdm(test_datas_dict.items()):
+
+for key, prompt in islice(test_datas_dict.items(), 2):
+#for key, prompt in tqdm(test_datas_dict.items()):
     text = add_special_template(prompt["prompt"][:8000])
     input_ids = tokenizer(text, return_tensors="pt").input_ids.to("cuda")
     model.prefix_len = input_ids.shape[-1]
     print("input_ids", input_ids.shape)
+
+
     if args.model_name == "llama3-8b":
         terminators = [
         tokenizer.eos_token_id,
@@ -177,8 +191,8 @@ for key, prompt in tqdm(test_datas_dict.items()):
     final_datas.append({"id":key, "prompt":prompt["prompt"], "response":result})
 
 if args.AARF:
-    with open(f"./logs/dolly_truthful_answer_generate_{args.model_name}_AARF_add_{model.add_attention_weight}_reduce_{model.reduce_ffn_weight}_threshold_{model.threshold}.json", "w") as f:
+    with open(f"./ReDeEP/log/dolly_truthful_answer_generate_{args.model_name}_AARF_add_{model.add_attention_weight}_reduce_{model.reduce_ffn_weight}_threshold_{model.threshold}.json", "w") as f:
         json.dump(final_datas, f, indent=4, ensure_ascii=False)
 else:
-    with open(f"./logs/dolly_truthful_answer_generate_{args.model_name}.json", "w") as f:
+    with open(f"./ReDeEP/log/dolly_truthful_answer_generate_{args.model_name}.json", "w") as f:
         json.dump(final_datas, f, indent=4, ensure_ascii=False)
