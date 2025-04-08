@@ -12,7 +12,9 @@ import numpy as np
 import argparse
 import transformers
 from transformers import AutoConfig
-print(transformers.__file__)
+import gc
+torch.cuda.empty_cache()
+gc.collect()
 
 parser = argparse.ArgumentParser(description='Script for processing data and models.')
 parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
@@ -33,10 +35,24 @@ if not hf_token:
     raise ValueError("Hugging Face token not found in config.json")
 
 
+parser = argparse.ArgumentParser(description='Script for processing data and models.')
+parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
+parser.add_argument(
+    '--dataset', 
+    type=str, 
+    default="ragtruth", 
+    help='ragtruth, dolly'
+)
+
+args = parser.parse_args()
+
+
 bge_model = SentenceTransformer("BAAI/bge-base-en-v1.5").to("cuda:0")
 if args.dataset == "ragtruth":
     if args.model_name == "llama3-8b":
         response_path = "../dataset/response_span_with_llama3_8b.jsonl"
+    elif args.model_name == "llama2-7b":
+        response_path = "../dataset/response_with_llama2_7b_spans.jsonl"
     else:
         response_path = "../dataset/response_spans.jsonl"
 elif args.dataset == "dolly":
@@ -91,7 +107,7 @@ else:
 
 
 if args.model_name == "llama2-7b":
-    topk_head_path = "./ReDeEP/log/test_llama2_7B/topk_heads.json"
+    topk_head_path = "./log/test_llama2_7B/topk_heads.json"
 elif args.model_name == "llama2-13b":
     topk_head_path = "./ReDeEP/log/test_llama2_13B/topk_heads.json"
 elif args.model_name == "llama3-8b":
@@ -250,7 +266,7 @@ else:
 
 
 #for i in tqdm(range(len(response))):
-for i in tqdm(range(100,140)):
+for i in tqdm(range(100)):
     if response[i]['model'] == data_type and response[i]["split"] == "test":
         response_rag = response[i]['response']
         source_id = response[i]['source_id']
@@ -259,8 +275,8 @@ for i in tqdm(range(100,140)):
         original_prompt_spans = source_info_dict[source_id]['prompt_spans']
         original_response_spans = response[i]['response_spans']
 
-        text = add_special_template(prompt[:12000])
-        #text = add_special_template(prompt[:1000])
+        text = add_special_template(prompt[:3000])
+        #text = add_special_template(prompt[:12000])
         input_text = text+response_rag
         print("all_text_len:", len(input_text))
         print("prompt_len", len(prompt))
@@ -290,13 +306,14 @@ for i in tqdm(range(100,140)):
 
         start_p, end_p = None, None
         with torch.no_grad():
-            logits_dict, outputs = model(
-                    input_ids=input_ids, 
-                    return_dict=True,
-                    output_attentions=True,
-                    output_hidden_states=True,
-                    knowledge_layers=list(range(start, number))
-                )
+            with torch.amp.autocast(device_type="cuda"):            
+                logits_dict, outputs = model(
+                        input_ids=input_ids, 
+                        return_dict=True,
+                        output_attentions=True,
+                        output_hidden_states=True,
+                        knowledge_layers=list(range(start, number))
+                    )
             
         logits_dict = {key: [value[0].to(device), value[1].to(device)] for key, value in logits_dict.items()}
         #outputs.to(device)
@@ -344,13 +361,17 @@ for i in tqdm(range(100,140)):
 
         response[i]["scores"] = span_socre_dict
         select_response.append(response[i])
+        
+        del input_ids, prefix_ids, outputs, logits_dict, hidden_states, last_hidden_states
+        torch.cuda.empty_cache()
+        gc.collect()
+
 
 if args.model_name == "llama2-7b":
     if args.dataset == "ragtruth":
-        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk.json"
-        #save_path = "./log/test_llama2_7B/llama2_7B_response_chunk_1.json"
+        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk.json"
     elif args.dataset == "dolly":
-        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
+        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
 elif args.model_name == "llama2-13b":
     if args.dataset == "ragtruth":
         save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_chunk.json"
