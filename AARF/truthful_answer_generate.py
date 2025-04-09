@@ -8,7 +8,9 @@ import argparse
 import pdb
 from transformers import AutoConfig
 from itertools import islice
-
+import gc
+torch.cuda.empty_cache()
+gc.collect()
 
 
 
@@ -38,7 +40,7 @@ Respond in the following format:
 
 
 
-source_info_path = "../dataset/source_info_dolly.jsonl"
+source_info_path = "./dataset/source_info_dolly.jsonl"
 
 source_info_dict = {}
 
@@ -49,7 +51,7 @@ with open(source_info_path, 'r') as f:
 
 source_id_list = []
 
-response_path = "../dataset/response_dolly.jsonl"
+response_path = "./dataset/response_dolly.jsonl"
 
 with open(response_path, 'r') as f:
     for line in f:
@@ -135,7 +137,8 @@ else:
     model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
-    device_map="auto"
+    device_map="auto",
+        config=config
     )
     
 
@@ -153,9 +156,10 @@ def add_special_template(prompt):
 
 final_datas = []
 
-for key, prompt in islice(test_datas_dict.items(), 2):
+for key, prompt in islice(test_datas_dict.items(), 30):
 #for key, prompt in tqdm(test_datas_dict.items()):
-    text = add_special_template(prompt["prompt"][:8000])
+    text = add_special_template(prompt["prompt"][:3000])
+    #text = add_special_template(prompt["prompt"][:8000])
     input_ids = tokenizer(text, return_tensors="pt").input_ids.to("cuda")
     model.prefix_len = input_ids.shape[-1]
     print("input_ids", input_ids.shape)
@@ -189,6 +193,10 @@ for key, prompt in islice(test_datas_dict.items(), 2):
     result = tokenizer.decode(response, skip_special_tokens=True)
     print(result)
     final_datas.append({"id":key, "prompt":prompt["prompt"], "response":result})
+    
+    del input_ids, outputs
+    torch.cuda.empty_cache()
+    gc.collect()
 
 if args.AARF:
     with open(f"./ReDeEP/log/dolly_truthful_answer_generate_{args.model_name}_AARF_add_{model.add_attention_weight}_reduce_{model.reduce_ffn_weight}_threshold_{model.threshold}.json", "w") as f:

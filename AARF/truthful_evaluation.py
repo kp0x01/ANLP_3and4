@@ -68,10 +68,10 @@ parser = argparse.ArgumentParser(description='Script for processing data and mod
 parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
 args = parser.parse_args()
 
-with open(f"./logs/truthful_answer_generate_{args.model_name}.json", "r") as f:
+with open(f"./ReDeEP/log/dolly_truthful_answer_generate_{args.model_name}.json", "r") as f:
     final_datas = json.load(f)
 
-with open(f"./logs/truthful_answer_generate_{args.model_name}_AARF.json", "r") as f:
+with open(f"./ReDeEP/log/dolly_truthful_answer_generate_{args.model_name}_AARF.json", "r") as f:
     final_datas_AARF = json.load(f)
 
 processed_data = []
@@ -123,8 +123,8 @@ counts = extract_win_model_counts(llm_repsonse)
 print(counts)
 
 
-with open(f"./logs/{args.model_name}_eval.json", 'w') as f:
+with open(f"./ReDeEP/log/{args.model_name}_eval.json", 'w') as f:
     json.dump(processed_data, f, indent=4, ensure_ascii=False)
 
-with open(f"./logs/{args.model_name}_counts.json", 'w') as f:
+with open(f"./ReDeEP/log/{args.model_name}_counts.json", 'w') as f:
     json.dump(counts, f, indent=4, ensure_ascii=False)

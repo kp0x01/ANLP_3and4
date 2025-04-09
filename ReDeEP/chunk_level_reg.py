@@ -37,7 +37,7 @@ with open(source_info_path, 'r') as f:
 
 def construct_dataframe(file_path, number):
     # Sample data for illustration
-    with open(file_path, "r") as f:
+    with open(file_path, "r",encoding="utf-8") as f:
         response = json.load(f)  
 
     # Create a dataframe to hold the combined information
@@ -68,6 +68,7 @@ def construct_dataframe(file_path, number):
             para_map_dict = {f"parameter_knowledge_difference_{k}":list(resp["scores"][j]["parameter_knowledge_scores"].keys())[k] for k in range(number)}
 
     df = pd.DataFrame(data_dict)
+    print(df)
 
     print(df["hallucination_label"].value_counts(normalize=True))
     return df, ext_map_dict, para_map_dict
@@ -222,7 +223,8 @@ if __name__ == "__main__":
 
     df, ext_map_dict, para_map_dict = construct_dataframe(data_path, number)
 
-    auc_external_similarity, _, auc_parameter_knowledge_difference, _ = calculate_auc_pcc(df.iloc[:, :int(df.shape[1] * 0.5)], ext_map_dict, para_map_dict, number)
+    auc_external_similarity, _, auc_parameter_knowledge_difference, _ = calculate_auc_pcc(df, ext_map_dict, para_map_dict, number)
+    #auc_external_similarity, _, auc_parameter_knowledge_difference, _ = calculate_auc_pcc(df.iloc[:, :int(df.shape[1] * 0.5)], ext_map_dict, para_map_dict, number)
 
     if args.model_name == "llama2-7b":
         if args.dataset == "ragtruth":

@@ -34,38 +34,25 @@ hf_token = config_data.get("hf_token")
 if not hf_token:
     raise ValueError("Hugging Face token not found in config.json")
 
-
-parser = argparse.ArgumentParser(description='Script for processing data and models.')
-parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
-parser.add_argument(
-    '--dataset', 
-    type=str, 
-    default="ragtruth", 
-    help='ragtruth, dolly'
-)
-
-args = parser.parse_args()
-
-
 bge_model = SentenceTransformer("BAAI/bge-base-en-v1.5").to("cuda:0")
 if args.dataset == "ragtruth":
     if args.model_name == "llama3-8b":
-        response_path = "../dataset/response_span_with_llama3_8b.jsonl"
+        response_path = "./dataset/response_span_with_llama3_8b.jsonl"
     elif args.model_name == "llama2-7b":
-        response_path = "../dataset/response_with_llama2_7b_spans.jsonl"
+        response_path = "./dataset/response_with_llama2_7b_spans.jsonl"
     else:
-        response_path = "../dataset/response_spans.jsonl"
+        response_path = "./dataset/response_spans.jsonl"
 elif args.dataset == "dolly":
-    response_path = "../dataset/response_dolly_spans.jsonl"
+    response_path = "./dataset/response_dolly_spans.jsonl"
 response = []
 with open(response_path, 'r') as f:
     for line in f:
         data = json.loads(line)
         response.append(data)
 if args.dataset == "ragtruth":
-    source_info_path = "../dataset/source_info_spans.jsonl"
+    source_info_path = "./dataset/source_info_spans.jsonl"
 elif args.dataset == "dolly":
-    source_info_path = "../dataset/source_info_dolly_spans.jsonl"
+    source_info_path = "./dataset/source_info_dolly_spans.jsonl"
 source_info_dict = {}
 
 with open(source_info_path, 'r') as f:
@@ -107,7 +94,7 @@ else:
 
 
 if args.model_name == "llama2-7b":
-    topk_head_path = "./log/test_llama2_7B/topk_heads.json"
+    topk_head_path = "./ReDeEP/log/test_llama2_7B/topk_heads.json"
 elif args.model_name == "llama2-13b":
     topk_head_path = "./ReDeEP/log/test_llama2_13B/topk_heads.json"
 elif args.model_name == "llama3-8b":
@@ -369,9 +356,9 @@ for i in tqdm(range(100)):
 
 if args.model_name == "llama2-7b":
     if args.dataset == "ragtruth":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk.json"
     elif args.dataset == "dolly":
-        save_path = "./log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
+        save_path = "./ReDeEP/log/test_llama2_7B/llama2_7B_response_chunk_dolly.json"
 elif args.model_name == "llama2-13b":
     if args.dataset == "ragtruth":
         save_path = "./ReDeEP/log/test_llama2_13B/llama2_13B_response_chunk.json"
