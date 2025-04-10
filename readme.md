@@ -13,7 +13,7 @@ Retrieval-Augmented Generation (RAG) models are designed to incorporate external
 
 
 # Reimplementation
-# Requirements
+**Requirements**
 ```bash
 pip install -e transformers
 pip install sentence_transformers 
