@@ -12,7 +12,12 @@ import gc
 torch.cuda.empty_cache()
 gc.collect()
 
-
+config_file_path = "config.json"
+with open(config_file_path, "r") as f:
+    config_data = json.load(f)
+hf_token = config_data.get("hf_token")
+if not hf_token:
+    raise ValueError("Hugging Face token not found in config.json")
 
 parser = argparse.ArgumentParser(description='Script for processing data and models.')
 parser.add_argument('--model_name', type=str, required=True, help='llama2-7b or llama2-13b or llama3-8b')
@@ -107,9 +112,9 @@ else:
     print("name error")
     exit(-1)
 
-tokenizer = AutoTokenizer.from_pretrained(model_name, token = "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")
+tokenizer = AutoTokenizer.from_pretrained(model_name, token = hf_token)
 if args.model_name == "llama2-13b":
-    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = "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")
+    tokenizer_for_temp = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf",token = hf_token)
 else:
     tokenizer_for_temp = tokenizer
 
@@ -128,7 +133,7 @@ if args.AARF:
         weight=weight,
         final_max_min=final_max_min,
         config=config,
-        token = "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"
+        token = hf_token
     )
     model.add_attention_weight = 1.2
     model.reduce_ffn_weight = 0.8
